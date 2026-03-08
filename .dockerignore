@@ -1,0 +1,38 @@
+# Dependências (instaladas no build)
+node_modules
+server/node_modules
+
+# Build local (gerado no Docker)
+dist
+dist-ssr
+
+# Git e IDE
+.git
+.gitignore
+.idea
+.vscode
+*.md
+!README.md
+
+# Env local (não subir segredos)
+.env
+.env.*
+!.env.example
+
+# Logs e cache
+*.log
+.npm
+.cache
+
+# Testes e lint (não precisam na imagem)
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+__tests__
+e2e
+
+# Outros
+.DS_Store
+*.local
+terminals
