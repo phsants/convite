@@ -160,12 +160,18 @@ export default function SmartImport({ partyId, existingFamilies = [], onClose })
       <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
         {preview.map((guest, idx) => {
           const namesFromBatch = [
-            ...new Set(preview.map((g) => g.group_name).filter(Boolean)),
+            ...new Set(
+              preview
+                .filter((_, i) => i !== idx) // ignora o próprio convidado
+                .map((g) => g.group_name)
+                .filter(Boolean)
+            ),
           ].filter((n) => !existingFamilies.some((f) => f.name === n))
           const allFamilyNames = [
             ...existingFamilies.map((f) => f.name),
             ...namesFromBatch,
           ]
+          const isExistingFamily = allFamilyNames.includes(guest.group_name || '')
           const showFamilySelect = existingFamilies.length > 0 || allFamilyNames.length > 0
           return (
           <div key={idx} className="border rounded-xl p-3 bg-gray-50">
@@ -207,11 +213,7 @@ export default function SmartImport({ partyId, existingFamilies = [], onClose })
                   <div className="space-y-1.5">
                     <Label className="text-xs text-gray-500">Grupo/Família</Label>
                     <select
-                      value={
-                        allFamilyNames.includes(guest.group_name || '')
-                          ? (guest.group_name || '')
-                          : '__new__'
-                      }
+                      value={isExistingFamily ? (guest.group_name || '') : '__new__'}
                       onChange={(e) => {
                         const v = e.target.value
                         if (v === '__new__') {
@@ -235,7 +237,7 @@ export default function SmartImport({ partyId, existingFamilies = [], onClose })
                       ))}
                       <option value="__new__">+ Nova família...</option>
                     </select>
-                    {!allFamilyNames.includes(guest.group_name || '') && (
+                    {!isExistingFamily && (
                       <Input
                         value={guest.group_name || ''}
                         onChange={(e) => updateGuest(idx, 'group_name', e.target.value)}
