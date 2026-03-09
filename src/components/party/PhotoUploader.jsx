@@ -1,7 +1,21 @@
 import React, { useRef, useState } from 'react'
 import { ImagePlus, X, Loader2 } from 'lucide-react'
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+// Usa mesma regra do client da API: relativo em produção (mesmo host), localhost em dev
+const apiBase =
+  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.PROD
+      ? ''
+      : 'http://localhost:3000'
+
+function getToken() {
+  try {
+    return localStorage.getItem('convite_token')
+  } catch {
+    return null
+  }
+}
 
 export default function PhotoUploader({ photos = [], onPhotosChange }) {
   const fileInputRef = useRef(null)
@@ -13,11 +27,13 @@ export default function PhotoUploader({ photos = [], onPhotosChange }) {
     setUploading(true)
     const newPhotos = [...photos]
     try {
+      const token = getToken()
       for (const file of files) {
         const form = new FormData()
         form.append('file', file)
         const res = await fetch(`${apiBase}/api/upload`, {
           method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: form,
         })
         if (!res.ok) {

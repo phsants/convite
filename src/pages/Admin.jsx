@@ -94,7 +94,9 @@ export default function Admin() {
                     <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="py-3 pr-4 font-medium text-gray-800">
                         {p.child_name || '—'}
-                        {p.child_age ? ` (${p.child_age} anos)` : ''}
+                        {typeof p.child_age === 'number'
+                          ? ` (${p.child_age} ${p.child_age === 1 ? 'ano' : 'anos'})`
+                          : ''}
                       </td>
                       <td className="py-3 pr-4 text-gray-600">
                         {p.party_date

@@ -179,7 +179,14 @@ export default function Confirmar() {
               </motion.div>
               <h1 className="mb-1 text-3xl font-bold">
                 {party?.child_name
-                  ? `Festa da ${party.child_name}${party.child_age ? ` — ${party.child_age} anos` : ''}!`
+                  ? (() => {
+                      const idade = party.child_age
+                      const idadeLabel =
+                        typeof idade === 'number'
+                          ? ` — ${idade} ${idade === 1 ? 'ano' : 'anos'}`
+                          : ''
+                      return `Festa da ${party.child_name}${idadeLabel}!`
+                    })()
                   : 'Festa de Aniversário!'}
               </h1>
               {party?.message && (

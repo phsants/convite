@@ -131,7 +131,9 @@ export default function Home() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
                   Festa da {party.child_name}
-                  {party.child_age ? ` — ${party.child_age} anos` : ''}
+                  {typeof party.child_age === 'number'
+                    ? ` — ${party.child_age} ${party.child_age === 1 ? 'ano' : 'anos'}`
+                    : ''}
                 </h1>
                 <p className="mt-0.5 text-sm text-gray-400">
                   {party.party_date &&

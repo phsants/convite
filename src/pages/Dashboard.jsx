@@ -243,9 +243,14 @@ export default function Dashboard() {
                 </h1>
                 <p className="mt-0.5 text-sm text-gray-400">
                   {selectedParty.child_name &&
-                    `Festa da ${selectedParty.child_name}${
-                      selectedParty.child_age ? ` — ${selectedParty.child_age} anos` : ''
-                    }`}
+                    (() => {
+                      const idade = selectedParty.child_age
+                      const idadeLabel =
+                        typeof idade === 'number'
+                          ? ` — ${idade} ${idade === 1 ? 'ano' : 'anos'}`
+                          : ''
+                      return `Festa da ${selectedParty.child_name}${idadeLabel}`
+                    })()}
                 </p>
               </div>
             </div>
