@@ -82,6 +82,137 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
     new Set(existingFamilies.map((f) => f.name).filter(Boolean))
   )
 
+  const renderEditPanel = (token, memberId) => {
+    if (!editingGuest) return null
+    if (editingGuest._token !== token || editingGuest._memberId !== memberId) return null
+
+    const isExistingFamily =
+      editingGuest.group_name && familyNames.includes(editingGuest.group_name)
+
+    return (
+      <div className="mt-2 rounded-2xl border border-gray-100 bg-gray-50 p-3 space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-gray-600">Nome</Label>
+          <Input
+            value={editingGuest.name}
+            onChange={(e) =>
+              setEditingGuest((g) => ({ ...g, name: e.target.value }))
+            }
+            placeholder="Nome do convidado"
+            className="rounded-lg text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Tipo</Label>
+            <select
+              value={editingGuest.type}
+              onChange={(e) =>
+                setEditingGuest((g) => ({ ...g, type: e.target.value }))
+              }
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+            >
+              <option value="adult">Adulto</option>
+              <option value="child">Criança</option>
+            </select>
+          </div>
+          {editingGuest.type === 'child' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-600">Idade</Label>
+              <Input
+                type="number"
+                min={0}
+                max={18}
+                value={editingGuest.age ?? ''}
+                onChange={(e) =>
+                  setEditingGuest((g) => ({
+                    ...g,
+                    age: e.target.value === '' ? '' : Number(e.target.value),
+                  }))
+                }
+                placeholder="Ex: 5"
+                className="rounded-lg text-sm"
+              />
+            </div>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-gray-600">Grupo/Família</Label>
+          {familyNames.length > 0 ? (
+            <>
+              <select
+                value={isExistingFamily ? editingGuest.group_name : '__new__'}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (v === '__new__') {
+                    setEditingGuest((g) => ({ ...g, group_name: '' }))
+                  } else {
+                    setEditingGuest((g) => ({ ...g, group_name: v || '' }))
+                  }
+                }}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+              >
+                <option value="">Sem família</option>
+                {familyNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value="__new__">+ Nova família...</option>
+              </select>
+              {!isExistingFamily && (
+                <Input
+                  value={editingGuest.group_name || ''}
+                  onChange={(e) =>
+                    setEditingGuest((g) => ({
+                      ...g,
+                      group_name: e.target.value,
+                    }))
+                  }
+                  placeholder="Nome da nova família"
+                  className="rounded-lg text-sm"
+                />
+              )}
+            </>
+          ) : (
+            <Input
+              value={editingGuest.group_name || ''}
+              onChange={(e) =>
+                setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
+              }
+              placeholder="Ex: Família Silva (opcional)"
+              className="rounded-lg text-sm"
+            />
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setEditingGuest(null)}
+            className="rounded-lg"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSaveEdit}
+            disabled={editMutation.isPending || !editingGuest.name?.trim()}
+            className="rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600"
+          >
+            {editMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              'Salvar'
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2">
       {Object.keys(groupedGuests).map((token) => {
@@ -166,6 +297,8 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                       type: base.type || 'adult',
                       group_name: base.group_name || groupName || '',
                       age: base.age ?? '',
+                      _token: token,
+                      _memberId: 'header',
                     })
                   }}
                   className="h-8 w-8 text-gray-400 hover:text-purple-600"
@@ -215,6 +348,8 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
               </div>
             </div>
 
+            {renderEditPanel(token, 'header')}
+
             <AnimatePresence>
               {isExpanded && isGroup && (
                 <motion.div
@@ -253,6 +388,8 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                                     type: member.type || 'adult',
                                     group_name: member.group_name || groupName || '',
                                     age: member.age ?? '',
+                                    _token: token,
+                                    _memberId: member.id,
                                   })
                                 }
                                 className="h-7 w-7 text-gray-400 hover:text-purple-600"
@@ -265,6 +402,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                               {memberSt.label}
                             </Badge>
                           </div>
+                          {renderEditPanel(token, member.id)}
                         )
                       })}
                     </div>
