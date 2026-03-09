@@ -19,7 +19,12 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const apiBase =
+  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.PROD
+      ? ''
+      : 'http://localhost:3000'
 
 export default function Confirmar() {
   const [guest, setGuest] = useState(null)

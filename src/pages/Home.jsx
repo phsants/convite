@@ -19,7 +19,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 import { Users, LogOut } from 'lucide-react'
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const apiBase =
+  import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
+    ? import.meta.env.VITE_API_URL
+    : import.meta.env.PROD
+      ? ''
+      : 'http://localhost:3000'
 
 export default function Home() {
   const navigate = useNavigate()
