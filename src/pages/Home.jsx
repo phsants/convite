@@ -275,7 +275,11 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <GuestTable guests={guests} onDelete={handleDeleteGuest} />
+            <GuestTable
+              guests={guests}
+              existingFamilies={existingFamilies}
+              onDelete={handleDeleteGuest}
+            />
           )}
         </div>
       </div>

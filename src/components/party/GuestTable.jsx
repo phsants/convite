@@ -16,7 +16,7 @@ const statusMap = {
   partial: { label: 'Parcial', color: 'bg-blue-100 text-blue-700 border-blue-200' },
 }
 
-export default function GuestTable({ guests, onDelete }) {
+export default function GuestTable({ guests, existingFamilies = [], onDelete }) {
   const [copiedId, setCopiedId] = useState(null)
   const [expandedGroup, setExpandedGroup] = useState(null)
   const [editingGuest, setEditingGuest] = useState(null)
@@ -77,6 +77,10 @@ export default function GuestTable({ guests, onDelete }) {
       </div>
     )
   }
+
+  const familyNames = Array.from(
+    new Set(existingFamilies.map((f) => f.name).filter(Boolean))
+  )
 
   return (
     <div className="space-y-2">
@@ -272,7 +276,7 @@ export default function GuestTable({ guests, onDelete }) {
         )
       })}
       {editingGuest && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 px-4 pt-16 sm:pt-24">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl space-y-3">
             <h3 className="text-sm font-semibold text-gray-800">Editar convidado</h3>
             <div className="space-y-3">
@@ -323,14 +327,61 @@ export default function GuestTable({ guests, onDelete }) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-gray-600">Grupo/Família</Label>
-                <Input
-                  value={editingGuest.group_name || ''}
-                  onChange={(e) =>
-                    setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
-                  }
-                  placeholder="Ex: Família Silva (opcional)"
-                  className="rounded-lg text-sm"
-                />
+                {familyNames.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {(() => {
+                      const isExisting =
+                        editingGuest.group_name &&
+                        familyNames.includes(editingGuest.group_name)
+                    return (
+                      <>
+                        <select
+                          value={isExisting ? editingGuest.group_name : '__new__'}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v === '__new__') {
+                              setEditingGuest((g) => ({ ...g, group_name: '' }))
+                            } else {
+                              setEditingGuest((g) => ({ ...g, group_name: v || '' }))
+                            }
+                          }}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                        >
+                          <option value="">Sem família</option>
+                          {familyNames.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                          <option value="__new__">+ Nova família...</option>
+                        </select>
+                        {!isExisting && (
+                          <Input
+                            value={editingGuest.group_name || ''}
+                            onChange={(e) =>
+                              setEditingGuest((g) => ({
+                                ...g,
+                                group_name: e.target.value,
+                              }))
+                            }
+                            placeholder="Nome da nova família"
+                            className="rounded-lg text-sm"
+                          />
+                        )}
+                      </>
+                    )
+                    })()}
+                  </div>
+                ) : (
+                  <Input
+                    value={editingGuest.group_name || ''}
+                    onChange={(e) =>
+                      setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
+                    }
+                    placeholder="Ex: Família Silva (opcional)"
+                    className="rounded-lg text-sm"
+                  />
+                )}
               </div>
             </div>
 
