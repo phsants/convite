@@ -151,6 +151,24 @@ export default function GuestTable({ guests, onDelete }) {
                 <Badge className={`${st.color} border text-xs font-medium whitespace-nowrap`}>
                   {st.label}
                 </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    const base = groupMembers[0]
+                    setEditingGuest({
+                      id: base.id,
+                      name: base.name,
+                      type: base.type || 'adult',
+                      group_name: base.group_name || groupName || '',
+                      age: base.age ?? '',
+                    })
+                  }}
+                  className="h-8 w-8 text-gray-400 hover:text-purple-600"
+                  title={isGroup ? 'Editar família' : 'Editar convidado'}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
                 {isGroup && (
                   <Button
                     size="icon"
