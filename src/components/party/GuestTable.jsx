@@ -59,6 +59,17 @@ export default function GuestTable({ guests, onDelete }) {
         else if (confirmedCount > 0 || declinedCount > 0) overallStatus = 'partial'
 
         const st = statusMap[overallStatus] || statusMap.pending
+        const childLabels = groupMembers
+          .filter((g) => g.type === 'child')
+          .map((g) => {
+            const idade = g.age
+            const idadeStr =
+              typeof idade === 'number'
+                ? `${idade} ${idade === 1 ? 'ano' : 'anos'}`
+                : null
+            return idadeStr ? `${g.name} (${idadeStr})` : g.name
+          })
+          .join(', ')
 
         return (
           <div
@@ -85,9 +96,9 @@ export default function GuestTable({ guests, onDelete }) {
                         {groupMembers.length === 1 ? 'pessoa' : 'pessoas'})
                       </span>
                     )}
-                    {groupMembers.some((g) => g.type === 'child') && (
+                    {childLabels && (
                       <Badge variant="outline" className="text-xs">
-                        👶
+                        👶 {childLabels}
                       </Badge>
                     )}
                   </div>
