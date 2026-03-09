@@ -6,6 +6,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY index.html vite.config.js ./
+COPY tailwind.config.js postcss.config.js components.json ./
 COPY src ./src
 
 # Build com URL da API relativa (mesmo servidor em produção)
