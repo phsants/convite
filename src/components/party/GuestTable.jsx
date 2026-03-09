@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Copy, Check, Trash2, Users, User, ChevronDown, ChevronUp } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Copy, Check, Trash2, Users, User, ChevronDown, ChevronUp, Pencil, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/api/client'
 
 const statusMap = {
   pending: { label: 'Pendente', color: 'bg-amber-100 text-amber-700 border-amber-200' },
@@ -15,6 +19,39 @@ const statusMap = {
 export default function GuestTable({ guests, onDelete }) {
   const [copiedId, setCopiedId] = useState(null)
   const [expandedGroup, setExpandedGroup] = useState(null)
+  const [editingGuest, setEditingGuest] = useState(null)
+
+  const queryClient = useQueryClient()
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }) => api.guests.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] })
+      toast.success('Convidado atualizado!')
+      setEditingGuest(null)
+    },
+    onError: (err) => {
+      toast.error(err?.data?.error || 'Não foi possível salvar. Tente novamente.')
+    },
+  })
+
+  const handleSaveEdit = () => {
+    if (!editingGuest?.name?.trim()) return
+
+    const idade =
+      editingGuest.type === 'child' && editingGuest.age !== '' && editingGuest.age != null
+        ? Number(editingGuest.age)
+        : null
+
+    editMutation.mutate({
+      id: editingGuest.id,
+      data: {
+        name: editingGuest.name.trim(),
+        type: editingGuest.type,
+        group_name: editingGuest.group_name || null,
+        age: idade,
+      },
+    })
+  }
 
   const groupedGuests = guests.reduce((acc, guest) => {
     const key = guest.confirmation_token
@@ -183,6 +220,24 @@ export default function GuestTable({ guests, onDelete }) {
                                   👶 {member.age && `${member.age} anos`}
                                 </Badge>
                               )}
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                  setEditingGuest({
+                                    id: member.id,
+                                    name: member.name,
+                                    type: member.type || 'adult',
+                                    group_name: member.group_name || groupName || '',
+                                    age: member.age ?? '',
+                                  })
+                                }
+                                className="h-7 w-7 text-gray-400 hover:text-purple-600"
+                                title="Editar convidado"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
                             </div>
                             <Badge className={`${memberSt.color} border text-xs`}>
                               {memberSt.label}
@@ -198,6 +253,96 @@ export default function GuestTable({ guests, onDelete }) {
           </div>
         )
       })}
+      {editingGuest && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl space-y-3">
+            <h3 className="text-sm font-semibold text-gray-800">Editar convidado</h3>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Nome</Label>
+                <Input
+                  value={editingGuest.name}
+                  onChange={(e) =>
+                    setEditingGuest((g) => ({ ...g, name: e.target.value }))
+                  }
+                  placeholder="Nome do convidado"
+                  className="rounded-lg text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">Tipo</Label>
+                  <select
+                    value={editingGuest.type}
+                    onChange={(e) =>
+                      setEditingGuest((g) => ({ ...g, type: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  >
+                    <option value="adult">Adulto</option>
+                    <option value="child">Criança</option>
+                  </select>
+                </div>
+                {editingGuest.type === 'child' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600">Idade</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={18}
+                      value={editingGuest.age ?? ''}
+                      onChange={(e) =>
+                        setEditingGuest((g) => ({
+                          ...g,
+                          age: e.target.value === '' ? '' : Number(e.target.value),
+                        }))
+                      }
+                      placeholder="Ex: 5"
+                      className="rounded-lg text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Grupo/Família</Label>
+                <Input
+                  value={editingGuest.group_name || ''}
+                  onChange={(e) =>
+                    setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
+                  }
+                  placeholder="Ex: Família Silva (opcional)"
+                  className="rounded-lg text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingGuest(null)}
+                className="rounded-lg"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={editMutation.isPending || !editingGuest.name?.trim()}
+                className="rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600"
+              >
+                {editMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Salvar'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
