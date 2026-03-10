@@ -212,6 +212,7 @@ router.put('/:id', requireAuth, async (req, res) => {
       type,
       age,
       group_name,
+      confirmation_token,
       confirmed_status,
       response_date,
       message,
@@ -222,9 +223,10 @@ router.put('/:id', requireAuth, async (req, res) => {
         type = COALESCE($3, type),
         age = COALESCE($4, age),
         group_name = COALESCE($5, group_name),
-        confirmed_status = COALESCE($6, confirmed_status),
-        response_date = COALESCE($7, response_date),
-        message = COALESCE($8, message)
+        confirmation_token = COALESCE($6, confirmation_token),
+        confirmed_status = COALESCE($7, confirmed_status),
+        response_date = COALESCE($8, response_date),
+        message = COALESCE($9, message)
        WHERE id = $1
        RETURNING *`,
       [
@@ -233,6 +235,7 @@ router.put('/:id', requireAuth, async (req, res) => {
         type,
         age,
         group_name,
+        confirmation_token,
         confirmed_status,
         response_date,
         message,

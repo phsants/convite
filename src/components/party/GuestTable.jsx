@@ -3,11 +3,26 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Copy, Check, Trash2, Users, User, ChevronDown, ChevronUp, Pencil, Loader2 } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  Trash2,
+  Users,
+  User,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Loader2,
+  MessageCircle,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+
+function generateToken() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+}
 
 const statusMap = {
   pending: { label: 'Pendente', color: 'bg-amber-100 text-amber-700 border-amber-200' },
@@ -30,7 +45,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
       setEditingGuest(null)
     },
     onError: (err) => {
-      toast.error(err?.data?.error || 'Não foi possível salvar. Tente novamente.')
+      toast.error(err?.data?.error || 'Nao foi possivel salvar. Tente novamente.')
     },
   })
 
@@ -42,13 +57,29 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
         ? Number(editingGuest.age)
         : null
 
+    const normalizedGroup = (editingGuest.group_name || '').trim()
+    const selectedFamily = existingFamilies.find((f) => f.name === normalizedGroup)
+    const groupNameToSave = normalizedGroup || null
+
+    let confirmationTokenToSave
+    if (selectedFamily) {
+      confirmationTokenToSave = selectedFamily.token
+    } else if (groupNameToSave) {
+      confirmationTokenToSave = generateToken()
+    } else {
+      confirmationTokenToSave = undefined
+    }
+
     editMutation.mutate({
       id: editingGuest.id,
       data: {
         name: editingGuest.name.trim(),
         type: editingGuest.type,
-        group_name: editingGuest.group_name || null,
+        group_name: groupNameToSave,
         age: idade,
+        // Se escolher uma família existente, herda o mesmo token/link da família;
+        // se for uma nova família, gera um novo token.
+        confirmation_token: confirmationTokenToSave,
       },
     })
   }
@@ -78,16 +109,15 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
     )
   }
 
-  const familyNames = Array.from(
-    new Set(existingFamilies.map((f) => f.name).filter(Boolean))
-  )
+  const familyNames = Array.from(new Set(existingFamilies.map((f) => f.name).filter(Boolean)))
 
   const renderEditPanel = (token, memberId) => {
     if (!editingGuest) return null
     if (editingGuest._token !== token || editingGuest._memberId !== memberId) return null
 
-    const isExistingFamily =
-      editingGuest.group_name && familyNames.includes(editingGuest.group_name)
+    const normalizedGroup = (editingGuest.group_name || '').trim()
+    const isExistingFamily = normalizedGroup && familyNames.includes(normalizedGroup)
+    const selectValue = normalizedGroup === '' ? '' : isExistingFamily ? normalizedGroup : '__new__'
 
     return (
       <div className="mt-2 rounded-2xl border border-gray-100 bg-gray-50 p-3 space-y-3">
@@ -95,25 +125,22 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
           <Label className="text-xs text-gray-600">Nome</Label>
           <Input
             value={editingGuest.name}
-            onChange={(e) =>
-              setEditingGuest((g) => ({ ...g, name: e.target.value }))
-            }
+            onChange={(e) => setEditingGuest((g) => ({ ...g, name: e.target.value }))}
             placeholder="Nome do convidado"
             className="rounded-lg text-sm"
           />
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-600">Tipo</Label>
             <select
               value={editingGuest.type}
-              onChange={(e) =>
-                setEditingGuest((g) => ({ ...g, type: e.target.value }))
-              }
+              onChange={(e) => setEditingGuest((g) => ({ ...g, type: e.target.value }))}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
             >
               <option value="adult">Adulto</option>
-              <option value="child">Criança</option>
+              <option value="child">Crianca</option>
             </select>
           </div>
           {editingGuest.type === 'child' && (
@@ -136,12 +163,13 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
             </div>
           )}
         </div>
+
         <div className="space-y-1.5">
-          <Label className="text-xs text-gray-600">Grupo/Família</Label>
+          <Label className="text-xs text-gray-600">Grupo/Familia</Label>
           {familyNames.length > 0 ? (
             <>
               <select
-                value={isExistingFamily ? editingGuest.group_name : '__new__'}
+                value={selectValue}
                 onChange={(e) => {
                   const v = e.target.value
                   if (v === '__new__') {
@@ -152,24 +180,19 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                 }}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
               >
-                <option value="">Sem família</option>
+                <option value="">Sem familia</option>
                 {familyNames.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
                 ))}
-                <option value="__new__">+ Nova família...</option>
+                <option value="__new__">+ Nova familia...</option>
               </select>
-              {!isExistingFamily && (
+              {selectValue === '__new__' && (
                 <Input
                   value={editingGuest.group_name || ''}
-                  onChange={(e) =>
-                    setEditingGuest((g) => ({
-                      ...g,
-                      group_name: e.target.value,
-                    }))
-                  }
-                  placeholder="Nome da nova família"
+                  onChange={(e) => setEditingGuest((g) => ({ ...g, group_name: e.target.value }))}
+                  placeholder="Nome da nova familia"
                   className="rounded-lg text-sm"
                 />
               )}
@@ -177,14 +200,13 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
           ) : (
             <Input
               value={editingGuest.group_name || ''}
-              onChange={(e) =>
-                setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
-              }
-              placeholder="Ex: Família Silva (opcional)"
+              onChange={(e) => setEditingGuest((g) => ({ ...g, group_name: e.target.value }))}
+              placeholder="Ex: Familia Silva (opcional)"
               className="rounded-lg text-sm"
             />
           )}
         </div>
+
         <div className="flex justify-end gap-2 pt-1">
           <Button
             type="button"
@@ -202,11 +224,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
             disabled={editMutation.isPending || !editingGuest.name?.trim()}
             className="rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600"
           >
-            {editMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              'Salvar'
-            )}
+            {editMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
           </Button>
         </div>
       </div>
@@ -235,37 +253,25 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
           .filter((g) => g.type === 'child')
           .map((g) => {
             const idade = g.age
-            const idadeStr =
-              typeof idade === 'number'
-                ? `${idade} ${idade === 1 ? 'ano' : 'anos'}`
-                : null
+            const idadeStr = typeof idade === 'number' ? `${idade} ${idade === 1 ? 'ano' : 'anos'}` : null
             return idadeStr ? `${g.name} (${idadeStr})` : g.name
           })
           .join(', ')
+        const groupMessage = groupMembers.map((g) => (g.message && String(g.message).trim()) || null).find(Boolean)
 
         return (
-          <div
-            key={token}
-            className="rounded-xl bg-white border border-gray-100 hover:shadow-md transition-all"
-          >
+          <div key={token} className="rounded-xl bg-white border border-gray-100 hover:shadow-md transition-all">
             <div className="flex items-center justify-between p-4 group">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                  {isGroup ? (
-                    <Users className="w-5 h-5" />
-                  ) : (
-                    groupMembers[0].name?.charAt(0)?.toUpperCase()
-                  )}
+                  {isGroup ? <Users className="w-5 h-5" /> : groupMembers[0].name?.charAt(0)?.toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-gray-800">
-                      {groupName || groupMembers[0].name}
-                    </p>
+                    <p className="font-semibold text-gray-800">{groupName || groupMembers[0].name}</p>
                     {isGroup && (
                       <span className="text-xs text-gray-400">
-                        ({groupMembers.length}{' '}
-                        {groupMembers.length === 1 ? 'pessoa' : 'pessoas'})
+                        ({groupMembers.length} {groupMembers.length === 1 ? 'pessoa' : 'pessoas'})
                       </span>
                     )}
                     {childLabels && (
@@ -276,16 +282,23 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                   </div>
                   {overallStatus === 'partial' && (
                     <p className="text-xs text-blue-600 mt-0.5">
-                      {confirmedCount} confirmado{confirmedCount !== 1 ? 's' : ''},{' '}
-                      {pendingCount} pendente{pendingCount !== 1 ? 's' : ''}
+                      {confirmedCount} confirmado{confirmedCount !== 1 ? 's' : ''}, {pendingCount} pendente{pendingCount !== 1 ? 's' : ''}
                     </p>
+                  )}
+                  {groupMessage && (
+                    <div
+                      className="mt-2 flex items-start gap-1.5 rounded-lg bg-pink-50/80 border border-pink-100 px-2.5 py-1.5 text-sm text-gray-700"
+                      title={groupMessage}
+                    >
+                      <MessageCircle className="w-4 h-4 shrink-0 text-pink-500 mt-0.5" />
+                      <span className="line-clamp-2 break-words">{groupMessage}</span>
+                    </div>
                   )}
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
-                <Badge className={`${st.color} border text-xs font-medium whitespace-nowrap`}>
-                  {st.label}
-                </Badge>
+                <Badge className={`${st.color} border text-xs font-medium whitespace-nowrap`}>{st.label}</Badge>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -302,7 +315,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                     })
                   }}
                   className="h-8 w-8 text-gray-400 hover:text-purple-600"
-                  title={isGroup ? 'Editar família' : 'Editar convidado'}
+                  title={isGroup ? 'Editar familia' : 'Editar convidado'}
                 >
                   <Pencil className="w-4 h-4" />
                 </Button>
@@ -314,11 +327,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                     className="h-8 w-8 text-gray-400 hover:text-purple-600"
                     title="Ver membros"
                   >
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </Button>
                 )}
                 <Button
@@ -328,11 +337,7 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                   className="h-8 w-8 text-gray-400 hover:text-pink-600"
                   title="Copiar link"
                 >
-                  {copiedId === token ? (
-                    <Check className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
+                  {copiedId === token ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 </Button>
                 <Button
                   size="icon"
@@ -362,47 +367,43 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
                   <div className="px-4 pb-4 pt-0 border-t border-gray-100">
                     <div className="bg-gray-50 rounded-lg p-3 mt-3 space-y-2">
                       {groupMembers.map((member) => {
-                        const memberSt =
-                          statusMap[member.confirmed_status] || statusMap.pending
+                        const memberSt = statusMap[member.confirmed_status] || statusMap.pending
                         return (
-                          <div
-                            key={member.id}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <div className="flex items-center gap-2">
-                              <User className="w-3 h-3 text-gray-400" />
-                              <span className="text-gray-700">{member.name}</span>
-                              {member.type === 'child' && (
-                                <Badge variant="outline" className="text-xs">
-                                  👶 {member.age && `${member.age} anos`}
-                                </Badge>
-                              )}
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  setEditingGuest({
-                                    id: member.id,
-                                    name: member.name,
-                                    type: member.type || 'adult',
-                                    group_name: member.group_name || groupName || '',
-                                    age: member.age ?? '',
-                                    _token: token,
-                                    _memberId: member.id,
-                                  })
-                                }
-                                className="h-7 w-7 text-gray-400 hover:text-purple-600"
-                                title="Editar convidado"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </Button>
+                          <React.Fragment key={member.id}>
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <User className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-700">{member.name}</span>
+                                {member.type === 'child' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    👶 {member.age && `${member.age} anos`}
+                                  </Badge>
+                                )}
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setEditingGuest({
+                                      id: member.id,
+                                      name: member.name,
+                                      type: member.type || 'adult',
+                                      group_name: member.group_name || groupName || '',
+                                      age: member.age ?? '',
+                                      _token: token,
+                                      _memberId: member.id,
+                                    })
+                                  }
+                                  className="h-7 w-7 text-gray-400 hover:text-purple-600"
+                                  title="Editar convidado"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <Badge className={`${memberSt.color} border text-xs`}>{memberSt.label}</Badge>
                             </div>
-                            <Badge className={`${memberSt.color} border text-xs`}>
-                              {memberSt.label}
-                            </Badge>
-                          </div>
-                          {renderEditPanel(token, member.id)}
+                            {renderEditPanel(token, member.id)}
+                          </React.Fragment>
                         )
                       })}
                     </div>
@@ -413,143 +414,6 @@ export default function GuestTable({ guests, existingFamilies = [], onDelete }) 
           </div>
         )
       })}
-      {editingGuest && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 px-4 pt-16 sm:pt-24">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Editar convidado</h3>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600">Nome</Label>
-                <Input
-                  value={editingGuest.name}
-                  onChange={(e) =>
-                    setEditingGuest((g) => ({ ...g, name: e.target.value }))
-                  }
-                  placeholder="Nome do convidado"
-                  className="rounded-lg text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600">Tipo</Label>
-                  <select
-                    value={editingGuest.type}
-                    onChange={(e) =>
-                      setEditingGuest((g) => ({ ...g, type: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
-                  >
-                    <option value="adult">Adulto</option>
-                    <option value="child">Criança</option>
-                  </select>
-                </div>
-                {editingGuest.type === 'child' && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600">Idade</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={18}
-                      value={editingGuest.age ?? ''}
-                      onChange={(e) =>
-                        setEditingGuest((g) => ({
-                          ...g,
-                          age: e.target.value === '' ? '' : Number(e.target.value),
-                        }))
-                      }
-                      placeholder="Ex: 5"
-                      className="rounded-lg text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600">Grupo/Família</Label>
-                {familyNames.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {(() => {
-                      const isExisting =
-                        editingGuest.group_name &&
-                        familyNames.includes(editingGuest.group_name)
-                    return (
-                      <>
-                        <select
-                          value={isExisting ? editingGuest.group_name : '__new__'}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            if (v === '__new__') {
-                              setEditingGuest((g) => ({ ...g, group_name: '' }))
-                            } else {
-                              setEditingGuest((g) => ({ ...g, group_name: v || '' }))
-                            }
-                          }}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
-                        >
-                          <option value="">Sem família</option>
-                          {familyNames.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                          <option value="__new__">+ Nova família...</option>
-                        </select>
-                        {!isExisting && (
-                          <Input
-                            value={editingGuest.group_name || ''}
-                            onChange={(e) =>
-                              setEditingGuest((g) => ({
-                                ...g,
-                                group_name: e.target.value,
-                              }))
-                            }
-                            placeholder="Nome da nova família"
-                            className="rounded-lg text-sm"
-                          />
-                        )}
-                      </>
-                    )
-                    })()}
-                  </div>
-                ) : (
-                  <Input
-                    value={editingGuest.group_name || ''}
-                    onChange={(e) =>
-                      setEditingGuest((g) => ({ ...g, group_name: e.target.value }))
-                    }
-                    placeholder="Ex: Família Silva (opcional)"
-                    className="rounded-lg text-sm"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingGuest(null)}
-                className="rounded-lg"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveEdit}
-                disabled={editMutation.isPending || !editingGuest.name?.trim()}
-                className="rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600"
-              >
-                {editMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Salvar'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
